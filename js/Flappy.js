@@ -7,6 +7,7 @@ class Flappy {
         this.gravity = 1;
         this.bird = new Bird(this.canvas);
         this.pipes = [];
+        this.score = 0;
         this.background = {
             sx: 0,
             sy: 300,
@@ -37,13 +38,9 @@ class Flappy {
         requestAnimationFrame(() => {
             this.render();
         })
-
     }
-    stop() {
-        
-    }
-    pause() {
-
+    gameOver() {
+        this.gameStatus = "over";
     }
     render() {
         if(this.gameStatus == "home") {
@@ -52,9 +49,21 @@ class Flappy {
             this.draw();
             this.update();
             if(this.everyInterval(150)) {
-                this.createPipe();
+                let topPipeHeight = randomNumber(100,300);
+                let gap = 200;
+                let bottomPipeHeight = this.canvas.height - gap - topPipeHeight;
+                this.createPipe('bottom', 0, 0, 52, 200, this.canvas.width, this.canvas.height - bottomPipeHeight, 70, bottomPipeHeight);
+                this.createPipe('top', 0, 0, 52, 100,0, 0, 70, topPipeHeight);
+                console.log(this.pipes)
             }
-        } 
+        }  else if (this.gameStatus == "over") {
+            let text = "Game Over";
+            this.ctx.font = "32px Arial"
+            this.ctx.fillStyle = "red";
+            this.ctx.fillText("Game Over",this.canvas.width/2 - this.ctx.measureText(text).width/2,this.canvas.height/2);
+            this.drawScore();
+            return;
+        }
 
         this.frameNo++;
         requestAnimationFrame(() => {
@@ -63,10 +72,9 @@ class Flappy {
     }
     draw() {
         this.drawBackground();
-        // Draw bird
-        this.bird.draw();
-        // Draw Pipe
         this.drawPipe();
+        this.drawScore();
+        this.bird.draw();
     }
     update(which="all") {
         if(which=="all") {
@@ -75,6 +83,7 @@ class Flappy {
             this.bird.update(); 
         }
     }
+
     drawBackground() {
         let background = new Image();
         background.src = "images/bg.png";
@@ -85,15 +94,15 @@ class Flappy {
     }
     updateBackground() {
         this.background.dx--;
-        if(this.background.dx == -800) {
+        if (this.background.dx == -800) {
             this.background.dx += 800;
         }
     }
-    flap() {
-        this.bird.gravity = -5;
-        setTimeout(() => {
-            this.bird.gravity = 1;
-        }, 100)
+    drawScore() {
+        let score = this.bird.score;
+        this.ctx.font = "24px Arial";
+        this.ctx.fillStyle = "red";
+        this.ctx.fillText(`Score: ${score}`, 20, 40)
     }
     drawHomeScreen() {
         // draw background image
@@ -113,48 +122,48 @@ class Flappy {
 
         }
     }
-    createPipe(position, height) {
-        this.pipes.push({
+    createPipe(position, sx, sy, sw, sh, dx, dy, dw, dh) {
+        let newPipe = {
             position: position,
-            sx: 0,
-            sy: 0,
-            sw: 52,
-            sh: 40,
-            dx: this.canvas.width,
-            dy:0,
-            dw: 20,
-            dh: 30
-        });
-        console.log('Pipe created');
+            sx: sx,
+            sy: sy,
+            sw: sw,
+            sh: sh,
+            dx: dx,
+            dy: dy,
+            dw: dw,
+            dh: dh
+        };
+        console.log(newPipe)
+        this.pipes.push(newPipe);
     }
     drawPipe() {
-        this.pipes.forEach(pipe => {
-            let image = new Image;
-            image.src = "images/pipe-green.png";
-            image.onload = () => {
-                let image = new Image;
-                image.src = "images/pipe-green.png";
-                image.onload = () => {
-                    let pipeWidth = 70;
-                    let pipeHeight = 200;
-
-                    this.ctx.drawImage(image, 0, 0, 52, 100, pipe.dx-1, this.canvas.height - 200, 70, 200);
-                    
+        let image = new Image;
+        image.src = "images/pipe-green.png";
+        image.onload = () => {
+            this.pipes.forEach(pipe => {
+                let pipeWidth = 70;
+                if(pipe.position == 'bottom') {
+                    this.ctx.drawImage(image, 0, 0, 52, 200, pipe.dx-1, pipe.dy, 70, pipe.dh);
+                }else{
                     this.ctx.save();
-                    this.ctx.translate(pipe.dx - 10, 0 + 200 / 2);
+                    this.ctx.translate(this.canvas.width - 10, 0 + pipe.dh / 2);
                     this.ctx.rotate(180 * Math.PI / 180.0);
-                    this.ctx.translate(-pipeWidth, -200 / 2);
-                    this.ctx.drawImage(image, 0, 0, 52, 100, 0, 0, pipeWidth, 200);
+                    this.ctx.translate(-pipe.dw, -pipe.dh / 2);
+                    this.ctx.drawImage(image, 0, 0, 52, 200, pipe.dx, pipe.dy, pipe.dw, pipe.dh);
                     this.ctx.restore();
                 }
-
-            }
-        });
+            });
+        }
     }
     updatePipe() {
         this.pipes.forEach((pipe,index) => {
-            if(pipe.dx <= 0) this.pipes.shift()
-            this.pipes[index].dx += -2;
+            if((pipe.dx <= 0 && pipe.position == 'bottom') || (pipe.dx >= this.canvas.width && pipe.position == 'top')) this.pipes.splice(index,1)
+            this.pipes[index].dx += ( this.pipes[index].position == 'top' ? +2 : -2);
+
+            if (this.bird.isIntersect(pipe)) this.gameOver();
+            else if (this.bird.isPass()) this.score++;
+            
         })
     }
     everyInterval(n) {

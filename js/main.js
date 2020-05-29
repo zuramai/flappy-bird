@@ -14,11 +14,11 @@ canvas.addEventListener('mousedown', (e) => {
                 game.start();
             }
     } else if (game.gameStatus == 'playing') {
-        game.flap();
+        game.bird.flap();
     }
 });
 window.addEventListener('keydown', (e) => {
     if(e.key == " " || e.key == "w" || e.key == "ArrowUp") {
-        game.flap();
+        game.bird.flap();
     }
 });
